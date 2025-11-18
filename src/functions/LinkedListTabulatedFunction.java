@@ -17,7 +17,7 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
     private int count;
     private static final long serialVersionUID = 1L;
 
-    // --- Конструкторы (из ЛР 2, 3, 4) ---
+    // --- Конструкторы ---
     public LinkedListTabulatedFunction() {
         this.count = 0;
         this.head = new FunctionNode();
@@ -35,7 +35,6 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
         this.head.next = head;
     
         double step = (rightX - leftX) / (pointsCount - 1);
-        // Используем addPoint, чтобы он сам увеличивал count
         for (int i = 0; i < pointsCount; i++) {
             try {
                 this.addPoint(new FunctionPoint(leftX + i * step, 0));
@@ -80,7 +79,7 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
     }
 
 
-    // --- Внутренние методы списка (getNodeByIndex, etc.) ---
+    // --- Внутренние методы ---
     
     private FunctionNode getNodeByIndex(int index) {
         if (index < 0 || index >= count) {
@@ -101,7 +100,6 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
         return current;
     }
 
-    // Добавляет узел ПЕРЕД 'node' и возвращает новый узел
     private FunctionNode addNode(FunctionNode node) {
         FunctionNode newNode = new FunctionNode();
         newNode.prev = node.prev;
@@ -119,7 +117,7 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
         return node;
     }
     
-    // --- Основные методы (getLeftDomainBorder, getFunctionValue, etc.) ---
+    // --- Основные методы ---
     
     public double getLeftDomainBorder() {
         return head.next.point.getX();
@@ -129,6 +127,7 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
         return head.prev.point.getX();
     }
 
+    // --- ИСПРАВЛЕННЫЙ МЕТОД (Задание 2) ---
     public double getFunctionValue(double x) {
         if (x < getLeftDomainBorder() || x > getRightDomainBorder() || count == 0) {
             return Double.NaN;
@@ -136,15 +135,30 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
 
         FunctionNode current = head.next;
         while (current != head) {
-            if (current.point.getX() == x) {
+            double epsilon = 1e-9; // Машинный эпсилон
+
+            // Проверка: если x совпадает с точкой текущего узла
+            if (Math.abs(current.point.getX() - x) < epsilon) {
                 return current.point.getY();
             }
-            if (current.point.getX() < x && current.next != head && x < current.next.point.getX()) {
+
+            // Проверяем интервал между текущим и следующим узлом
+            if (current.next != head) {
                 double x1 = current.point.getX();
-                double y1 = current.point.getY();
                 double x2 = current.next.point.getX();
-                double y2 = current.next.point.getY();
-                return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+                
+                // Если x строго внутри интервала
+                if (x > x1 && x < x2) {
+                    // Проверяем правую границу на всякий случай, чтобы избежать интерполяции при x ~= x2
+                    if (Math.abs(x2 - x) < epsilon) {
+                        return current.next.point.getY();
+                    }
+                    
+                    // Если точного совпадения нет, делаем интерполяцию
+                    double y1 = current.point.getY();
+                    double y2 = current.next.point.getY();
+                    return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+                }
             }
             current = current.next;
         }
@@ -222,11 +236,10 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
         if(current != head && current.point.getX() == point.getX()) {
             throw new InappropriateFunctionPointException("Point with X=" + point.getX() + " already exists.");
         }
-        // Вставляем узел ПЕРЕД 'current'
         addNode(current).point = new FunctionPoint(point);
     }
 
-    // --- Методы Externalizable (из ЛР 4) ---
+    // --- Методы Externalizable ---
     public void writeExternal(ObjectOutput out) throws IOException {
         out.writeInt(count);
         FunctionNode current = head.next;
@@ -244,18 +257,16 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
         
         for (int i = 0; i < readCount; i++) {
             FunctionPoint point = (FunctionPoint) in.readObject();
-            // Используем addPoint, чтобы не нарушать инкапсуляцию и проверки
             try {
                 this.addPoint(point);
             } catch (InappropriateFunctionPointException e) {
-                 // При десериализации не должно быть дубликатов, но проверка нужна
                  throw new IOException("Failed to deserialize: " + e.getMessage());
             }
         }
     }
 
 
-    // --- НОВЫЕ МЕТОДЫ (Задание 3) ---
+    // --- НОВЫЕ МЕТОДЫ ---
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -280,13 +291,11 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
 
         if (this.getPointsCount() != that.getPointsCount()) return false;
 
-        // Оптимизация для LinkedListTabulatedFunction
         if (o instanceof LinkedListTabulatedFunction) {
             LinkedListTabulatedFunction thatList = (LinkedListTabulatedFunction) o;
             FunctionNode thisCurrent = this.head.next;
             FunctionNode thatCurrent = thatList.head.next;
             
-            // Проходим по обоим спискам одновременно
             while (thisCurrent != this.head) {
                 if (!thisCurrent.point.equals(thatCurrent.point)) {
                     return false;
@@ -295,7 +304,6 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
                 thatCurrent = thatCurrent.next;
             }
         } else {
-            // Стандартное сравнение через getPoint() для других реализаций
             for (int i = 0; i < this.getPointsCount(); i++) {
                 if (!this.getPoint(i).equals(that.getPoint(i))) {
                     return false;
@@ -313,23 +321,17 @@ public class LinkedListTabulatedFunction implements TabulatedFunction, Externali
             result = 31 * result + current.point.hashCode();
             current = current.next;
         }
-        // Добавляем count, как указано в задании
         result = 31 * result + Integer.hashCode(count);
         return result;
     }
 
     public Object clone() throws CloneNotSupportedException {
-        // "Пересобираем" новый объект, как предложено в задании
-        
-        // 1. Создаем массив клонированных точек
         FunctionPoint[] clonedPoints = new FunctionPoint[this.count];
         FunctionNode current = this.head.next;
         for (int i = 0; i < this.count; i++) {
             clonedPoints[i] = (FunctionPoint) current.point.clone();
             current = current.next;
         }
-        
-        // 2. Используем конструктор из Задания 1 для создания нового объекта
         return new LinkedListTabulatedFunction(clonedPoints);
     }
 }

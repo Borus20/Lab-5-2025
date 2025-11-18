@@ -1,6 +1,5 @@
 package functions;
 
-// Добавляем implements Cloneable для Задания 4
 public class FunctionPoint implements java.io.Serializable, Cloneable {
     private double x;
     private double y;
@@ -38,40 +37,39 @@ public class FunctionPoint implements java.io.Serializable, Cloneable {
         this.y = y;
     }
 
-    // --- НОВЫЕ МЕТОДЫ (Задание 1) ---
-
     public String toString() {
-        // Возвращает строку в формате "(x; y)"
         return "(" + x + "; " + y + ")";
     }
 
+    // --- ИСПРАВЛЕННЫЙ МЕТОД ---
     public boolean equals(Object o) {
-        // 1. Проверка на тот же самый объект
         if (this == o) return true;
-        // 2. Проверка, что o - это вообще FunctionPoint
         if (o == null || getClass() != o.getClass()) return false;
         
-        // 3. Приведение типа и сравнение полей
         FunctionPoint that = (FunctionPoint) o;
         
-        // Используем Double.compare для точного сравнения битов double
-        return Double.compare(that.x, x) == 0 && Double.compare(that.y, y) == 0;
+        // Задаем точность (машинный эпсилон)
+        double epsilon = 1e-9; 
+
+        // Проверяем x и y с учетом погрешности
+        // Если разница между числами меньше epsilon, считаем их равными
+        boolean xEquals = Math.abs(this.x - that.x) < epsilon;
+        boolean yEquals = Math.abs(this.y - that.y) < epsilon;
+
+        return xEquals && yEquals;
     }
 
     public int hashCode() {
-        // Используем XOR, как предложено в задании
         long xBits = Double.doubleToLongBits(x);
         long yBits = Double.doubleToLongBits(y);
         
-        int xHash = (int) (xBits ^ (xBits >>> 32)); // Хэш для x
-        int yHash = (int) (yBits ^ (yBits >>> 32)); // Хэш для y
+        int xHash = (int) (xBits ^ (xBits >>> 32));
+        int yHash = (int) (yBits ^ (yBits >>> 32));
         
-        // Комбинируем хэши
         return 31 * xHash + yHash;
     }
 
     public Object clone() throws CloneNotSupportedException {
-        // Вызываем clone() родительского класса Object
         return super.clone();
     }
 }

@@ -1,16 +1,15 @@
 package functions;
 
-// import java.io.Serializable;
-import java.util.Arrays; // Импортируем Arrays для hashCode
+import java.util.Arrays;
 
 public class ArrayTabulatedFunction implements TabulatedFunction {
     private FunctionPoint[] points;
     private static final long serialVersionUID = 1L; 
 
-    // --- Конструкторы (из ЛР 2, 3, 4) ---
+    // --- Конструкторы ---
     public ArrayTabulatedFunction(double leftX, double rightX, int pointsCount) {
         if (leftX >= rightX || pointsCount < 2) {
-            throw new IllegalArgumentException("Invalid arguments for function creation: leftX >= rightX or pointsCount < 2");
+            throw new IllegalArgumentException("Invalid arguments: leftX >= rightX or pointsCount < 2");
         }
         this.points = new FunctionPoint[pointsCount];
         double step = (rightX - leftX) / (pointsCount - 1);
@@ -22,7 +21,7 @@ public class ArrayTabulatedFunction implements TabulatedFunction {
     public ArrayTabulatedFunction(double leftX, double rightX, double[] values) {
         int count = values.length;
         if (leftX >= rightX || count < 2) {
-            throw new IllegalArgumentException("Invalid arguments for function creation: leftX >= rightX or pointsCount < 2");
+            throw new IllegalArgumentException("Invalid arguments: leftX >= rightX or pointsCount < 2");
         }
         this.points = new FunctionPoint[count];
         double step = (rightX - leftX) / (count - 1);
@@ -46,7 +45,7 @@ public class ArrayTabulatedFunction implements TabulatedFunction {
         }
     }
 
-    // --- Основные методы (getLeftDomainBorder, getFunctionValue, etc.) ---
+    // --- Основные методы ---
     
     public double getLeftDomainBorder() {
         return points[0].getX();
@@ -56,16 +55,33 @@ public class ArrayTabulatedFunction implements TabulatedFunction {
         return points[points.length - 1].getX();
     }
 
+    // --- ИСПРАВЛЕННЫЙ МЕТОД (Задание 2) ---
     public double getFunctionValue(double x) {
         if (x < getLeftDomainBorder() || x > getRightDomainBorder()) {
             return Double.NaN;
         }
+        
+        // Проходим по всем интервалам
         for (int i = 0; i < points.length - 1; ++i) {
-            if (points[i].getX() <= x && x <= points[i + 1].getX()) {
-                double x1 = points[i].getX();
-                double y1 = points[i].getY();
-                double x2 = points[i + 1].getX();
-                double y2 = points[i + 1].getY();
+            double x1 = points[i].getX();
+            double x2 = points[i + 1].getX();
+            double y1 = points[i].getY();
+            double y2 = points[i + 1].getY();
+
+            // Если x находится внутри текущего интервала
+            if (x >= x1 && x <= x2) {
+                double epsilon = 1e-9; // Машинный эпсилон
+
+                // Проверка точного совпадения с левой границей интервала
+                if (Math.abs(x - x1) < epsilon) {
+                    return y1;
+                }
+                // Проверка точного совпадения с правой границей интервала
+                if (Math.abs(x - x2) < epsilon) {
+                    return y2;
+                }
+
+                // Если совпадения нет, выполняем интерполяцию
                 return y1 + (y2 - y1) * (x - x1) / (x2 - x1);
             }
         }
@@ -78,7 +94,7 @@ public class ArrayTabulatedFunction implements TabulatedFunction {
 
     private void checkIndex(int index) {
         if (index < 0 || index >= points.length) {
-            throw new FunctionPointIndexOutOfBoundsException("Index " + index + " is out of bounds [0, " + (points.length - 1) + "]");
+            throw new FunctionPointIndexOutOfBoundsException("Index " + index + " is out of bounds");
         }
     }
 
@@ -153,14 +169,11 @@ public class ArrayTabulatedFunction implements TabulatedFunction {
         points = newPoints;
     }
 
-    // --- НОВЫЕ МЕТОДЫ (Задание 2) ---
-
     public String toString() {
-        // Формат: {(x1; y1), (x2; y2), ...}
         StringBuilder sb = new StringBuilder();
         sb.append("{");
         for (int i = 0; i < points.length; i++) {
-            sb.append(points[i].toString()); // Используем toString() из FunctionPoint
+            sb.append(points[i].toString());
             if (i < points.length - 1) {
                 sb.append(", ");
             }
@@ -171,26 +184,20 @@ public class ArrayTabulatedFunction implements TabulatedFunction {
 
     public boolean equals(Object o) {
         if (this == o) return true;
-        // Проверяем, что 'o' - это любая реализация TabulatedFunction
         if (!(o instanceof TabulatedFunction)) return false; 
         
         TabulatedFunction that = (TabulatedFunction) o;
 
-        // Сравниваем количество точек
         if (this.getPointsCount() != that.getPointsCount()) return false;
 
-        // Оптимизация для ArrayTabulatedFunction (прямой доступ к массиву)
         if (o instanceof ArrayTabulatedFunction) {
             ArrayTabulatedFunction thatArray = (ArrayTabulatedFunction) o;
-            // Сравниваем каждый элемент массива
             for (int i = 0; i < this.points.length; i++) {
-                // Используем equals() из FunctionPoint
                 if (!this.points[i].equals(thatArray.points[i])) {
                     return false;
                 }
             }
         } else {
-            // Стандартное сравнение через getPoint() для других реализаций
             for (int i = 0; i < this.getPointsCount(); i++) {
                 if (!this.getPoint(i).equals(that.getPoint(i))) {
                     return false;
@@ -202,20 +209,16 @@ public class ArrayTabulatedFunction implements TabulatedFunction {
     }
 
     public int hashCode() {
-        // Добавляем count (points.length) к хэшу, как в задании
         int result = Arrays.hashCode(points);
         result = 31 * result + Integer.hashCode(points.length);
         return result;
     }
 
     public Object clone() throws CloneNotSupportedException {
-        // Глубокое клонирование
         FunctionPoint[] clonedPoints = new FunctionPoint[this.points.length];
         for (int i = 0; i < this.points.length; i++) {
-            // Клонируем каждую точку
             clonedPoints[i] = (FunctionPoint) this.points[i].clone();
         }
-        // Создаем новый объект с клонированным массивом
         return new ArrayTabulatedFunction(clonedPoints);
     }
 }
